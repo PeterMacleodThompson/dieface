@@ -1,0 +1,66 @@
+#!/bin/sh
+#
+# Created by Peter Thompson Jan 2016 (see /etc/init.d/skeleton)
+# Modified for X86 Oct 2018
+# Starts/Stops the pmtdiefaced daemon.
+#
+#    -S start daemon
+#    -p pid-file == check this file if process already exists?
+#    -q -v == quiet or verbose
+#    -m == make /var/run/pidfile.pid (see -p pid-file) 
+#	  NOTE this puts parent pid in pid-file. MUST update in pmtgpds 
+#    --exec == program to execute
+#    -c --chuid runs as $UID=root for permissions on /run/pmtdiefaced.pid
+#    -K --stop == sends SIGTERM to process in .pid
+#    && do if left side is true || do if left side is false 
+#
+# INSTALLATION AND TESTING
+# sudo cp S70pmtdiefaced /etc/init.d/   	## where all daemon scripts stored
+# sudo chmod +x /etc/init.d/S70pmtdiefaced -v  ##S70 = automatically start on boot
+# sudo cp pmtdiefaced  /usr/sbin/      ## where all daemons are stored
+#
+#  sudo  /etc/init.d/S70pmtdiefaced start  <==> sudo service S70pmtdiefaced start
+#  ps -ef | grep pmt
+#  cat /var/log/syslog | tail
+#  cat /run/pmtdiefaced.pid
+#  ls /dev/shm/pmtdieface 	
+#  sudo service S70pmtdiefaced stop    		 
+############### Don't forget to remove from /etc/init.d/ /usr/sbin/ ######
+
+NAME=pmtdiefaced
+DAEMON=/usr/sbin/$NAME
+PIDFILE=/run/$NAME.pid
+UID=root
+GID=root
+
+
+start() {
+        echo -n "Starting $NAME: "
+        start-stop-daemon -S -v -m -p $PIDFILE --chuid $UID:$GID --exec $DAEMON && echo "OK" || echo "Failed"
+}
+stop() {
+        echo -n "Stopping $NAME: "
+        start-stop-daemon -K -v -p $PIDFILE && echo "OK" || echo "Failed"
+        rm -f $PIDFILE
+}
+restart() {
+        stop
+        start
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart|reload)
+        restart
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $?

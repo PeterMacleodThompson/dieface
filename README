@@ -1,0 +1,164 @@
+
+**************dieface daemons ****************
+Dieface daemons place a die (think Los Vegas) on earth (longitude, latitude) and 
+orient it in 3 dimensional space based on its 6 faces.  Standard Orientation is 1 facing up and 2 facing true-north. That means 6 is facing down and 5 is facing south in Standard Orientation.  
+There are 24 possible orientations: 6 faces on a die * 4 possible directions (North South East West).
+The daemons expect input from 2 sensors: a gps outputting NMEA sentences, and an accelerometer  with output compatible with the fx0s8700.
+
+CAUTION!!  AS REAL DEAMONS, THESE DEAMONS CREATE/REQUIRE FILES IN
+LINUX (NORMALLY RESTRICTED) DIRECTORIES!!!
+#  /etc/init.d/S50pmtgpsd, S60pmtfxosd, S70pmtdiefaced
+#  /usr/sbin/pmtgpsd, pmtfxosd, pmtdiefaced
+#  /usr/share/pmtgeomagnet/WMM.COF
+#  /run/pmtgpsd.pid, pmtfxosd.pid,  pmtdiefaced.pid 
+#  /dev/shm/pmtgps, pmtfxos, pmtdieface
+#  /var/log/syslog
+THE DAEMONS RUN WITH ROOT PRIVILEGES!!
+REMEMBER TO DELETE APPROPIATE FILES IF/WHEN REMOVING THESE DAEMONS
+
+THESE DAEMONS WILL START AUTOMATICALLY ON BOOTUP!   
+IF STARTING MANUALLY, START ORDER = S50pmtgpsd, S60pmtfxosd, S70pmtdiefaced 
+IF STOPPING MANUALLY, STOP ORDER = S70pmtdiefaced, S60pmtfxosd, S50pmtgpsd
+
+
+*****************************************************************
+**************** Daemon Description *****************************
+
+There are 3 daemons (pmtfxosd, pmtdiefaced, pmtgpsd) 
+and 1 display process(displayd)
+Each source program has compilation, installation instructions + website info 
+
+pmtfxosd daemon
+---------------
+creates mmap of /dev/shm/pmtfxos
+The Big Loop  
+ 	puts 1,2,3,4,...(fake data)  
+	into struct PMTfxos8700 = yaw, pitch, roll, ecompass
+	writes current record into mmapped to /dev/shm/pmtfxos
+	defined in fxos8700.h
+
+pmtgpsd daemon
+--------------
+    puts fixed fake data into
+	into struct PMTgps = longitude, latitude, altitude, declination, gmt
+	mmapped to /dev/shm/pmtgps
+	defined in pmtgps.h
+	includes declination calculation NOAA complex
+
+
+pmtdiefaced
+-----------
+  reads pitch, roll off PMTfxos8700 in /dev/shm/pmtfxos
+    into struct PMTdieEvent	= id, dieface, dieAction
+	mmapped to /dev/shm/pmtdieface
+	defined in dieface.h 
+	converts pitch, roll to dieface roll
+
+
+ddisplay
+--------
+    reads current mmapped records via shared memory
+	from: /dev/shm/pmtgps  /dev/shm/pmtfxos  /dev/shm/pmtdieface 
+	created/updated by daemons pmtfxosd, pmtgpsd, diefaced
+	into struct PMTfxos8700
+	and displays info on SDL2 screen 
+
+
+
+*****************************************************************
+**************** Daemon Structure *****************************
+
+Structure of pmtfxosd daemon (identical in all 3 daemons):
+---------------------------------------------------------
+S60pmtfxosd = daemon script in /etc/init.d/... S60 says initiate in boot process
+pmtfxosd 	= daemon name as specified in S60pmtfxosd script
+			= compiled pmtfxosdaemon.c + fxos8700stub.c
+			= daemon in /usr/sbin/
+
+pmtfxosdeamon.c ==> starts daemon process for The Big Loop
+fxos8700stub.c ==> creates mmap file, 
+				==> writes 1,2,..via struct PMTfxos8700 to mmap
+				==> current fxos record to mmap
+fxos8700.h ==> struct PMTfxos8700 for fxos8700 record
+
+Each daemon runs independently as a separate process
+
+
+
+
+*****************************************************************
+**************** Daemon Installation in rootfs ******************
+
+X86: run make in each daemon file.  
+BBB: cross compile as per instructions in top lines of src code
+
+THEN
+compiled blob: (pmtfxosd, pmtgpsd, pmtdiefaced) ==> /usr/sbin/
+start/stop script: (S60pmtfxosd, S50pmtgpsd, S70pmtdiefaced)
+	==> /etc/init.d/
+generated pid: ( pmtfxosd.pid, pmtgpsd.pid, pmtdiefaced.pid) 
+	==> /run  (NO NEED TO INSTALL - FYI ONLY)
+WMM.COF (World Magnetic Model data) ==> /usr/share/pmtgeomagnet/WMM.COF
+FreeSans.ttf ==> /usr/share/fonts/truetype/freefont/FreeSans.ttf
+
+# INSTALLATION AND TESTING EXAMPLE for pmtfxosd
+------------------------------------------------
+# sudo cp S60pmtfxosd /etc/init.d/   	## where all daemon scripts stored
+# sudo chmod +x /etc/init.d/S60pmtfxosd -v  ##S60 = automatically start on boot
+# sudo cp pmtfxosd  /usr/sbin/      ## where all daemons are stored
+#
+#  /etc/init.d/S60pmtfxosd start  <==> service S60pmtfxosd start
+#  service S60pmtfxosd restart  <==>  /etc/init.d/S60pmtfxosd restart   	
+#  service S60pmtfxosd stop    		 
+#  service --status-all       
+#  ps -ef | grep pmt
+
+
+
+*****************************************************************
+**************** Running/debugging Daemons ******************
+
+
+RUNNING FAKE DAEMONS (X86 OR ARM)
+----------------------------------
+sudo service S50pmtgpsd start
+sudo service S60pmtfxosd start
+sudo service S70pmtdiefaced start
+sudo ./viewsensorX86   OR ./viewsensorARM
+
+NOTE
+sudo service S60pmtfxosd start  <==>   sudo /etc/init.d/S60pmtfxosd start 
+
+DEBUGGING
+ps -ef | grep pmt
+cat /var/log/syslog | tail
+cat /run/pmtfxosd.pid
+ls /dev/shm/pmt*  (pmtgps, pmtfxos, pmtdieface)
+
+STOPPING FAKE DAEMONS (X86 OR ARM)
+----------------------------------
+sudo service S70pmtdiefaced stop
+sudo service S60pmtfxosd stop    		 
+sudo service S50pmtgpsd stop
+Daemons must be started and stopped properly to prevent a crash
+ - see RECOVERY FROM A CRASH - 
+
+************************* RECOVERY FROM A CRASH ************************
+ps -ef | grep pmt ==> get list of active pmt daemons and kill -9 them
+ls /run/pmt*  ==> get list of pmt-.pid files and delete them 
+ls /dev/shm/pmt* ==> get list of share-memory files and delete them 
+
+
+
+*****************************************************************
+**************** Daemon Removal from Computer ******************
+
+### Don't forget to remove from /etc/init.d/ /usr/sbin/ for daemon removal ######
+#  /etc/init.d/S50pmtgpsd, S60pmtfxosd, S70pmtdiefaced
+#  /usr/sbin/pmtgpsd, pmtfxosd, pmtdiefaced
+#  /usr/share/pmtgeomagnet/WMM.COF
+#  /run/pmtgpsd.pid, pmtfxosd.pid,  pmtdiefaced.pid 
+
+
+
+

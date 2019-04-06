@@ -1,12 +1,66 @@
-/*from  https://ngdc.noaa.gov/geomag/WMM/soft.shtml
- World Magnetic Model by NOAA
- - hacked from wmm_point.c into 3 parts:
-        - wmminit()
-        - wmmdecl() + hack GeomagnetismLibrary.c
-                + replace MAG_GetUserInput()
-                + remove MAG_PrintUserDataWithUncertainty()
-        - wmmclose()
-*/
+/**
+ * DOC: -- peterpoint.c --  calculate magnetic declination
+ * Peter Thompson  2019
+ * linked into pmtgpsd
+ *
+ * downloaded from  https://ngdc.noaa.gov/geomag/WMM/soft.shtml  in Dec 2018
+ *     World Magnetic Model by NOAA
+ *
+ * wmm_point.c was copied and hacked into peterpoint.c follows:
+ *      - wmminit() + created by extracting beginning of main()
+ *      - wmmdecl() + created as separate function from guts of main()
+ *              + replace MAG_GetUserInput() which gets data interactively
+ *                with wmmdeclination(...)  function call
+ *              +- make variables static to enable init() and close()
+ *              - remove MAG_PrintUserDataWithUncertainty()
+ *      - wmmclose() + create by extracting end of main()
+ *
+ * Other downloads from World Magnetic Model required
+ *  - GeomagnetismLibrary.c (unchanged) is linked into pmtgpsd
+ *  - WMM.COF datafile (unchanged) is expected in pmtgpsd/data/WMM.COF
+ *  - EGM9615.h expected in pmtgpsd/src/include
+ *  - GeomagnetismHeader.h expected in pmtgpsd/src/include
+ *
+ * Original Authors of wmm_point.c
+ * Manoj.C.Nair@Noaa.Gov
+ * April 21, 2011
+ *
+ *  Revision Number: $Revision: 1270 $
+ *  Last changed by: $Author: awoods $
+ *  Last changed on: $Date: 2014-11-21 10:40:43 -0700 (Fri, 21 Nov 2014) $
+ *
+ **** following comments are from GeomagnetismLibrary.c MAG_GetUserInput()
+ *******
+ *
+ * This takes the MagneticModel and Geoid as input and outputs the Geographic
+ * coordinates and Date as objects. INPUT : MagneticModel  : Data structure with
+ * the following elements used here double epoch;       Base time of Geomagnetic
+ * model epoch (yrs) : Geoid Pointer to data structure MAGtype_Geoid (used for
+ * converting HeightAboveGeoid to HeightABoveEllipsoid
+ *
+ * OUTPUT:
+ * CoordGeodetic : Pointer to data structure. Following elements are updated
+ *   double lambda; (longitude)
+ *   double phi; ( geodetic latitude)
+ *   double HeightAboveEllipsoid; (height above the ellipsoid (HaE) )
+ *   double HeightAboveGeoid;(height above the Geoid )
+ *
+ * MagneticDate : Pointer to data structure MAGtype_Date with the following
+ * elements updated int	Year; (If user directly enters decimal year this field
+ * is not populated) int	Month;(If user directly enters decimal year this
+ *field is not populated) int	Day; (If user directly enters decimal year this
+ *field is not populated) double DecimalYear;      decimal years  THIS IS
+ *REQUIRED
+ *
+ * CALLS: 	MAG_DMSstringToDegree(buffer, &CoordGeodetic->lambda); (The
+ *program uses this to convert the string into a decimal longitude.)
+ *                 MAG_ValidateDMSstringlong(buffer, Error_Message)
+ *                 MAG_ValidateDMSstringlat(buffer, Error_Message)
+ *                 MAG_Warnings
+ *                 MAG_ConvertGeoidToEllipsoidHeight
+ *                 MAG_DateToYear
+ *
+ */
 
 #include <math.h>
 #include <stdio.h>
@@ -14,54 +68,8 @@
 #include <string.h>
 #include <syslog.h>
 
-#include "GeomagnetismHeader.h"
-/*#include "GeomagnetismLibrary.c"*/
 #include "EGM9615.h"
-
-/*---------------------------------------------------------------------------*/
-
-/*
-The program expects the files GeomagnetismLibrary.c, GeomagnetismHeader.h,
-WMM.COF and EGM9615.h to be in the same directory.
-
-Manoj.C.Nair@Noaa.Gov
-April 21, 2011
-
- *  Revision Number: $Revision: 1270 $
- *  Last changed by: $Author: awoods $
- *  Last changed on: $Date: 2014-11-21 10:40:43 -0700 (Fri, 21 Nov 2014) $
-*/
-
-/*
-**** following comments from GeomagnetismLibrary.c MAG_GetUserInput() ******
-This takes the MagneticModel and Geoid as input and outputs the Geographic
-coordinates and Date as objects. INPUT : MagneticModel  : Data structure with
-the following elements used here double epoch;       Base time of Geomagnetic
-model epoch (yrs) : Geoid Pointer to data structure MAGtype_Geoid (used for
-converting HeightAboveGeoid to HeightABoveEllipsoid
-
-OUTPUT:
-CoordGeodetic : Pointer to data structure. Following elements are updated
-  double lambda; (longitude)
-  double phi; ( geodetic latitude)
-  double HeightAboveEllipsoid; (height above the ellipsoid (HaE) )
-  double HeightAboveGeoid;(height above the Geoid )
-
-MagneticDate : Pointer to data structure MAGtype_Date with the following
-elements updated int	Year; (If user directly enters decimal year this field
-is not populated) int	Month;(If user directly enters decimal year this field
-is not populated) int	Day; (If user directly enters decimal year this field is
-not populated) double DecimalYear;      decimal years  THIS IS REQUIRED
-
-CALLS: 	MAG_DMSstringToDegree(buffer, &CoordGeodetic->lambda); (The program uses
-this to convert the string into a decimal longitude.)
-                MAG_ValidateDMSstringlong(buffer, Error_Message)
-                MAG_ValidateDMSstringlat(buffer, Error_Message)
-                MAG_Warnings
-                MAG_ConvertGeoidToEllipsoidHeight
-                MAG_DateToYear
-
- */
+#include "GeomagnetismHeader.h"
 
 /* Memory allocation */
 static MAGtype_MagneticModel *MagneticModels[1], *TimedMagneticModel;
@@ -81,7 +89,10 @@ static int epochs = 1;
 
 static int wmmstop = 0; /* TRUE = 1, FALSE = 0 */
 
-/* WMM initialize */
+/**
+ * wmminit() - initialize WMM variables
+ * Return: nothing
+ */
 void wmminit() {
   char err[100];
 
@@ -115,6 +126,22 @@ void wmminit() {
   return;
 }
 
+/**
+ * wmmdeclination() - calculate declination
+ * @longitude 999.99999999 degrees + => East, - => West
+ * @latitude 99.99999999 degrees + => North, - => South
+ * @altitudekm 99.99999 km ( accurate to 10 cm )
+ * @year YYYY
+ * @month MM
+ * @day DD
+ *
+ * NOTE .99999999 (8 digits)  gives theoretical
+ *  accuracy to .01 sec = 1 foot
+ * For understanding of the declination calculation
+ * consult the NOAA website https://ngdc.noaa.gov/geomag
+ *
+ * Return: double declination 99.99999999 (guessing)
+ */
 /* declination calculation */
 double wmmdeclination(double longitude, double latitude, double altitudekm,
                       int year, int month, int day) {
@@ -156,6 +183,10 @@ double wmmdeclination(double longitude, double latitude, double altitudekm,
   return (GeoMagneticElements.Decl);
 }
 
+/**
+ * wmmclose() - close WMM
+ * Return: nothing
+ */
 void wmmclose() {
   /* WMM close  */
   MAG_FreeMagneticModelMemory(TimedMagneticModel);
@@ -164,32 +195,3 @@ void wmmclose() {
 
   return;
 }
-
-/* main for testing only
-calculates  declination = 14 degrees, 59 minutes */
-/* uncomment main() and compile with
-gcc -o peterpoint peterpoint.c GeomagnetismLibrary.c -I./include -lm   */
-
-/*
-main()
-{
-        double longitude = -116.2406;
-        double latitude = 50.45944;
-        double altitudekm  = 1.150;
-        int month = 12;
-        int day = 18;
-        int year = 2018;
-        double d, e;
-
-        wmminit();
-
-        while(1) {
-        d = wmmdeclination( longitude,latitude, altitudekm, year, month, day);
-        e = wmmdeclination(-78.36972, 45.21917, 0.440, 2018, 12, 18);
-        printf(" declination = %7.4f  %7.4f \n", d, e);
-        }
-
-        wmmclose();
-}
-
-*/

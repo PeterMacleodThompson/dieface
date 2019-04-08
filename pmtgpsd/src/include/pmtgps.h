@@ -31,7 +31,7 @@ struct GPGGA {
   char north;      /* N=North or S=South */
   float longitude; /* 99999.9999 = 999 degrees 99.9999 minutes */
   char west;       /* W=west or E = east */
-  int quality;     /* 0=invalid, 1-8=valid */
+  int quality;     /* 0=invalid, 1-5=valid, 6-8=estimates */
   int satellites;  /* 99 = number of satellites being followed */
   float dilution;  /* 9.9 = horizontal dilution of position */
   float altitude;  /* 9999.9 = altitude above mean sea level */
@@ -75,7 +75,7 @@ struct PMTgps {
   char latitudeNS;    /* N=north, S=South (default N) */
   int longitude;      /* format = dddmmss */
   char longitudeEW;   /* E=east, W=west (default W) */
-  int altitude;       /* in feet  NO NEED KM FOR DECLINATION CALCULATION */
+  int altitude;       /* in feet */
   double declination; /* to West = negative (Toronto), to East = positive */
                       /* (Calgary) http://www.ngdc.noaa.gov/geomag/WMM/ */
                       /* magnetic-declination.com */
@@ -91,7 +91,29 @@ struct PMTgps {
                     /* degrees */
 };
 
-/* Function Prototypes */
-double wmmdeclination(double, double, double, int, int, int);
-void wmminit(void);
-void wmmclose(void);
+/**
+ * struct linxdata --  linx R4 device data raw format
+ *   longitude, latitude is Decimal degrees
+ *   longitude format is ddd.ddddddd   + => East,  - => West
+ *   latitude format is dd.ddddddd     + => North, - => South
+ */
+struct linxdata {
+  int date;           /* 99999999 = yyyymmdd */
+  float gmt;          /* 999999.999 = UTC hh:mm:ss.sss */
+  double longitude;   /* decimal degrees  + => East,  - => West */
+  double latitude;    /* decimal degrees  + => North, - => South */
+  float altitude;     /* 9999.9 = altitude meters */
+  double declination; /* decimal degrees + => East, - => West */
+  float speed;        /* 999.99 = km per hour */
+  float track;        /* 999.99 = track angle in degrees True */
+};
+
+/**
+ * struct dms -- degrees, minutes, seconds, NS or EW indicator
+ */
+struct dms {
+  int degrees; /* 0-180 longitude or 0-90 latitude */
+  int minutes; /* 0-60 */
+  int seconds; /* 0-60 */
+  char nsew;   /* +latitude=N, -latitude=S, +longitude=E, -longitude=W */
+};

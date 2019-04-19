@@ -93,7 +93,7 @@ static int wmmstop = 0; /* TRUE = 1, FALSE = 0 */
  * wmminit() - initialize WMM variables
  * Return: nothing
  */
-void wmminit() {
+void wmminit(void) {
   char err[100];
 
   strncpy(VersionDate, VersionDate_Large + 39, 11);
@@ -131,9 +131,9 @@ void wmminit() {
  * @longitude 999.99999999 degrees + => East, - => West
  * @latitude 99.99999999 degrees + => North, - => South
  * @altitudekm 99.99999 km ( accurate to 10 cm )
- * @year YYYY
- * @month MM
- * @day DD
+ * @year YYYY current year
+ * @month MM  current month
+ * @day DD    current day
  *
  * NOTE .99999999 (8 digits)  gives theoretical
  *  accuracy to .01 sec = 1 foot

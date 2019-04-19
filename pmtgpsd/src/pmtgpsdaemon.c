@@ -11,12 +11,14 @@
  * cat /var/log/syslog | tail  ## has all daemon messages
  *
  * X86 compile with
- * gcc -o ../bin/pmtgpsd gpsstub.c  pmtgpsdaemon.c peterpoint.c
- *      GeomagnetismLibrary.c -I./include  -lrt -lm   OR
+ * gcc -o ../bin/pmtgpsd pmtgpsdaemon.c peterpoint.c
+ *      GeomagnetismLibrary.c gpsrun.c linxdriver.c simulate.c
+ *       -I./include  -lrt -lm   OR
  * ARM compile with
  *    export PATH=$PATH:$HOME/bbb2018/buildroot/output/host/bin ## for compiler
- *    arm-linux-gnueabihf-gcc -o ../bin/pmtgpsd gpsstub.c  pmtgpsdaemon.c
- * peterpoint.c GeomagnetismLibrary.c -I./include -lrt -lm
+ *    arm-linux-gnueabihf-gcc -o ../bin/pmtgpsd  pmtgpsdaemon.c
+ *    peterpoint.c GeomagnetismLibrary.c  gpsrun.c linxdriver.c
+ *    simulate.c  -I./include -lrt -lm
  */
 
 void pmtgps(void); /* the big loop process */

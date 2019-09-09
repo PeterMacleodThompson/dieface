@@ -13,7 +13,7 @@
  *
  *  3- calls to linxdriver.c to obtain gps data from Linx R4 gps device
  */
-#define MAINFORTESTING /* enable/disable testing with main() below */
+/* #define MAINFORTESTING /* enable/disable testing with main() below */
 
 #include <signal.h>
 #include <stdio.h>

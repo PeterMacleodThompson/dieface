@@ -22,7 +22,7 @@ original downloaded sources not included in github
 In pmtgpsd
 ----------
 WMM.COF is stored in github/../pmtgpsd/data
- but it MUST BE MOVED to /usr/share/pmtgeomagnet/WMM.COF 
+ but it MUST BE MOVED to /usr/share/pmt/WMM.COF 
 EGM9615.h & GeomagnetismHeader.h  are kept in pmtgpsd/src/include/
 GeomagnetismLibrary.c peterpoint.c are kept in pmtgpsd/src/
 

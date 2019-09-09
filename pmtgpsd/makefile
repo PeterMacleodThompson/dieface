@@ -13,21 +13,25 @@
 #  export ARCH=arm
 #  export CROSS_COMPILE=arm-linux-
 #
+# export PATH=$PATH:$HOME/bbb2018/buildroot/output/host/bin ## for compiler
+#
 ##############################################
 
 # hello application ==> 2 lines to change
-SOURCES = gpsstub.c  pmtgpsdaemon.c peterpoint.c GeomagnetismLibrary.c   # list of 4 source files
-EXECUTABLE = pmtgpsd         # 2nd of 2 lines to change
+SOURCES = pmtgpsdaemon.c peterpoint.c GeomagnetismLibrary.c gpsrun.c linxdriver.c simulate.c   # list of 6 source files
+
+
+EXECUTABLE = bin/pmtgpsd         # 2nd of 2 lines to change
 
 # hello directories
 SRCDIR = ./src
 OBJDIR = ./obj
 
 # compiler and linker flags to use 
-CC = gcc
+CC = arm-linux-gnueabihf-gcc
 
-CFLAGS += -I$(SRCDIR)/include/ 
-LDFLAGS =  # -L  directory location of libraries
+CFLAGS += -I../include/ 
+LDFLAGS =  -L /home/peter/bbb2018/buildroot/output/target/usr/lib # -L  directory location of libraries
 LDLIBS += -lm -lrt # -lSDL -lm ... all libraries linked in
 STATIC = # -static # for static (not dynamic) link 
 
@@ -58,7 +62,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 
 
 clean:
-	rm $(OBJDIR)/*.o; rm pmtgpsd; rm $(SRCDIR)/*~; rm *~
+	rm $(OBJDIR)/*.o; rm $(EXECUTABLE); rm $(SRCDIR)/*~; rm *~
 
 
 

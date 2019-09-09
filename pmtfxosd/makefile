@@ -13,22 +13,24 @@
 #  export ARCH=arm
 #  export CROSS_COMPILE=arm-linux-
 #
+# export PATH=$PATH:$HOME/bbb2018/buildroot/output/host/bin ## for compiler
+#
 ##############################################
 
 # hello application ==> 2 lines to change
-SOURCES = fxos8700stub.c  pmtfxosdaemon.c  getdieface.c  # list of 3 source files
-EXECUTABLE = pmtfxosd         # 2nd of 2 lines to change
+SOURCES = pmtfxosdaemon.c fxos8700run.c fxosdriver.c ecompass.c getdieface.c average.c # list of 6 source files
+EXECUTABLE = bin/pmtfxosd         # 2nd of 2 lines to change
 
 # hello directories
 SRCDIR = ./src
 OBJDIR = ./obj
 
 # compiler and linker flags to use 
-CC = gcc
+CC = arm-linux-gnueabihf-gcc
 
-CFLAGS += -I$(SRCDIR)/include/ 
-LDFLAGS =  # -L  directory location of libraries
-LDLIBS += -lm -lrt # -lSDL -lm ... all libraries linked in
+CFLAGS += -I../include/ 
+LDFLAGS =  -L /home/peter/bbb2018/buildroot/output/target/usr/lib # -L  directory location of libraries
+LDLIBS += -lm -lrt -li2c # -lSDL -lm ... all libraries linked in
 STATIC = # -static # for static (not dynamic) link 
 
 # create list of object filenames *.o from source filenames *.c and print them
@@ -58,7 +60,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 
 
 clean:
-	rm $(OBJDIR)/*.o; rm pmtfxosd; rm $(SRCDIR)/*~; rm *~
+	rm $(OBJDIR)/*.o; rm $(EXECUTABLE); rm $(SRCDIR)/*~; rm *~
 
 
 

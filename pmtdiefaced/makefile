@@ -14,7 +14,7 @@
 
 # hello application ==> 2 lines to change
 SOURCES =  diefacehandler.c diefacemain.c pmtdiefacedaemon.c  # list of 3 source files
-EXECUTABLE = pmtdiefaced         # 2nd of 2 lines to change
+EXECUTABLE = bin/pmtdiefaced         # 2nd of 2 lines to change
 
 # hello directories
 SRCDIR = ./src
@@ -22,12 +22,12 @@ OBJDIR = ./obj
 
 # compiler and linker flags to use 
 # CC = arm-linux-gcc
-CC = gcc
+CC = arm-linux-gnueabihf-gcc
 
-CFLAGS += -I$(SRCDIR)/include/   -I../pmtfxosd/src/include/
+CFLAGS += -I../include/
 
 
-LDFLAGS =  # -L  directory location of libraries
+LDFLAGS =  -L /home/peter/bbb2018/buildroot/output/target/usr/lib # -L  directory location of libraries
 LDLIBS = -lrt  # -lSDL -lm ... all libraries linked in
 STATIC = # -static # for static (not dynamic) link 
 
@@ -58,7 +58,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 
 
 clean:
-	rm $(OBJDIR)/*.o; rm pmtdiefaced; rm $(SRCDIR)/*~; rm *~
+	rm $(OBJDIR)/*.o; rm $(EXECUTABLE); rm $(SRCDIR)/*~; rm *~
 
 
 

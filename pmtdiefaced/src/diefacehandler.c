@@ -86,8 +86,8 @@ void (*const statetable[2][2])(void) = {
 
 /* function[1,1] = Steady State + die started rolling */
 void SSonroll(void) {
-  action = diefaceNow / 10; /* action 1st digit = steady state digit */
-  action = action * 10 + diefaceNext / 10; /* action 2nd digit */
+  action = diefaceNow; /* action 1st digit = steady state digit */
+  action = action * 10 + diefaceNext; /* action 2nd digit */
   if (action > 999999999)
     action = 99;
   statenow = USS;
@@ -100,8 +100,7 @@ void SSoffroll(void) { return; }
 
 /* function[2,1] = Unsteady State + die continues rolling */
 void USSonroll(void) {
-  action =
-      action * 10 + diefaceNext / 10; /* diefaceNew digit added to action */
+  action = action * 10 + diefaceNext; /* diefaceNew digit added to action */
   clockbegin = time(NULL);
   return;
 }
@@ -116,20 +115,11 @@ void USSoffroll(void) {
   statenow = SS;
   clockbegin = time(NULL);
 
-  /* validate action */
-  actionfinal = UNDOCUMENTED;
-  for (i = 0; i < NUM(validAction); i++)
-    if (action == validAction[i])
-      actionfinal = action;
+  /* validate action todo someday */
+  actionfinal = action;
 
-  if (actionfinal == UNDOCUMENTED) {
-    sprintf(debuglog, "Action NOT Found = %lld\n", action);
-    syslog(LOG_INFO, "%s", debuglog);
-  }
   /* set flags to reset shared memory */
   resetDF = 1; /* TRUE */
-  action = actionfinal;
-
   diefaceNow = diefaceNext;
   return;
 }
@@ -140,20 +130,18 @@ void diefaceinit(struct PMTdieEvent *df) {
   clockbegin = time(NULL);
   statenow = SS;
   newevent = offroll;
-  diefaceNow = 12;
-  diefaceNext = 12;
-  action = 99; /* default UNDOCUMENTED */
+  diefaceNow = 1;
+  diefaceNext = 1;
+  action = 0; /* default UNDOCUMENTED */
 
   /* set dieface shared memory */
   df->id = 1;
-  df->diefaceSS = 12;
-  df->dieaction = 99;
+  df->diefaceSS = 1;
+  df->dieaction = 0;
 }
 
 /*****************   diefacehandler ****************************/
 void diefacehandler(struct PMTdieEvent *df, int diefaceNew) {
-  /* NOTE diefaceNew is 2 digits (up+North), and must be
-  converted to 1 digit (up) via /10 before saving as action */
 
   double elapsed;
   char debuglog[500]; // printer string sent to syslog

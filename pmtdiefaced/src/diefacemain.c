@@ -17,11 +17,11 @@
 #include <syslog.h>
 
 #include "dieface.h"
-#include "fxos8700.h"
+#include "pmtfxos.h"
 
 // shared memory for dieface events
 #define INNAME "/pmtfxos"
-#define INSIZE (sizeof(struct PMTfxos8700))
+#define INSIZE (sizeof(struct PMTfxos))
 #define OUTNAME "/pmtdieface"
 #define OUTSIZE (sizeof(struct PMTdieEvent))
 
@@ -41,9 +41,9 @@ void terminate(int signum) {
 }
 
 void diefacemain() {
-  struct PMTdieEvent *dfnow;   /* df=dieface shared memory out */
-  struct PMTfxos8700 *fxosnow; /* shared memory in */
-  struct sigaction action;     /* SIGTERM for daemon stop */
+  struct PMTdieEvent *dfnow; /* df=dieface shared memory out */
+  struct PMTfxos *fxosnow;   /* shared memory in */
+  struct sigaction action;   /* SIGTERM for daemon stop */
 
   int fd1, fd2; /* file descriptor */
   char err[100];
@@ -81,7 +81,7 @@ void diefacemain() {
   diefaceinit(dfnow);
   /* THE BIG LOOP */
   while (!stopd) {
-    diefaceNew = fxosnow->diefaceUSS;
+    diefaceNew = fxosnow->diefaceup;
 
     /* state machine - uses 1st digit (up) only */
     diefacehandler(dfnow, diefaceNew);

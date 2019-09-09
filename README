@@ -9,7 +9,7 @@ CAUTION!!  AS REAL DEAMONS, THESE DEAMONS CREATE/REQUIRE FILES IN
 LINUX (NORMALLY RESTRICTED) DIRECTORIES!!!
 #  /etc/init.d/S50pmtgpsd, S60pmtfxosd, S70pmtdiefaced
 #  /usr/sbin/pmtgpsd, pmtfxosd, pmtdiefaced
-#  /usr/share/pmtgeomagnet/WMM.COF
+#  /usr/share/pmt/WMM.COF, calibdata
 #  /run/pmtgpsd.pid, pmtfxosd.pid,  pmtdiefaced.pid 
 #  /dev/shm/pmtgps, pmtfxos, pmtdieface
 #  /var/log/syslog
@@ -25,50 +25,54 @@ IF STOPPING MANUALLY, STOP ORDER = S70pmtdiefaced, S60pmtfxosd, S50pmtgpsd
 **************** Daemon Description *****************************
 
 There are 3 daemons (pmtfxosd, pmtdiefaced, pmtgpsd) 
-and 1 display process(displayd)
-Each source program has compilation, installation instructions + website info 
+and 2 test processes (testfxosdaemon, testgpsdaemon)
+Each source program has compilation instructions 
+ for individual testing, and make file for creating deamons.  
 
 pmtfxosd daemon
 ---------------
-creates mmap of /dev/shm/pmtfxos
-The Big Loop  
- 	puts 1,2,3,4,...(fake data)  
-	into struct PMTfxos8700 = yaw, pitch, roll, ecompass
-	writes current record into mmapped to /dev/shm/pmtfxos
-	defined in fxos8700.h
+    Uses FXO8700 chip magetometer, accelerometer 3+3=6 axis. 
+ 	puts dieface facing up (1-6), and heading(0-360) 
+	into struct PMTfxos (diefaceup, heading).
+	PMTfxos is mmapped to /dev/shm/pmtfxos
+	defined in pmtfxos.h
+    Default if i2c not working: diefaceup=1, heading=0;
 
 pmtgpsd daemon
 --------------
-    puts fixed fake data into
-	into struct PMTgps = longitude, latitude, altitude, declination, gmt
+    uses LINX chip NMEA Sentences
+	Puts struct PMTgps (longitude, latitude, altitude, declination, gmt etc)
 	mmapped to /dev/shm/pmtgps
 	defined in pmtgps.h
-	includes declination calculation NOAA complex
+	includes declination calculation NOAA = complex
+    Default if LINX chip not working is Percy Lake 
+     longlat= 782211W, 451309N, declination=-11.567, 
+     date:time=20181031:103005
 
 
 pmtdiefaced
 -----------
-  reads pitch, roll off PMTfxos8700 in /dev/shm/pmtfxos
-    into struct PMTdieEvent	= id, dieface, dieAction
+  reads diefaceup and converts actions to events
+  based on 3 second = steady state. 
+    Saves events in struct PMTdieEvent (id, dieface, dieAction)
 	mmapped to /dev/shm/pmtdieface
 	defined in dieface.h 
-	converts pitch, roll to dieface roll
+	
 
 
-ddisplay
---------
-    reads current mmapped records via shared memory
+testfxosdaemon, testgpsdaemon
+-----------------------------
+    reads current mmapped records in shared memory
 	from: /dev/shm/pmtgps  /dev/shm/pmtfxos  /dev/shm/pmtdieface 
 	created/updated by daemons pmtfxosd, pmtgpsd, diefaced
-	into struct PMTfxos8700
-	and displays info on SDL2 screen 
+	and displays summary information
 
 
 
 *****************************************************************
 **************** Daemon Structure *****************************
 
-Structure of pmtfxosd daemon (identical in all 3 daemons):
+Structure of pmtfxosd daemon (similar in all 3 daemons):
 ---------------------------------------------------------
 S60pmtfxosd = daemon script in /etc/init.d/... S60 says initiate in boot process
 pmtfxosd 	= daemon name as specified in S60pmtfxosd script
@@ -76,10 +80,11 @@ pmtfxosd 	= daemon name as specified in S60pmtfxosd script
 			= daemon in /usr/sbin/
 
 pmtfxosdeamon.c ==> starts daemon process for The Big Loop
-fxos8700stub.c ==> creates mmap file, 
-				==> writes 1,2,..via struct PMTfxos8700 to mmap
-				==> current fxos record to mmap
-fxos8700.h ==> struct PMTfxos8700 for fxos8700 record
+fxos8700run.c ==> creates mmap file, infinite loop updating mmap
+fxosdriver.c ==> FXOS8700 chip interface accelerometer, magnetometer data
+ecompass.c ==> convert magnetometer data to compass heading
+getdieface.c ==> convert accelerometer data to diefaceup reading
+fxos8700.h ==> struct PMTfxos for shared memory record
 
 Each daemon runs independently as a separate process
 
@@ -89,8 +94,8 @@ Each daemon runs independently as a separate process
 *****************************************************************
 **************** Daemon Installation in rootfs ******************
 
-X86: run make in each daemon file.  
-BBB: cross compile as per instructions in top lines of src code
+Run make in each daemon file...  
+OR cross compile as per instructions in top lines of src code
 
 THEN
 compiled blob: (pmtfxosd, pmtgpsd, pmtdiefaced) ==> /usr/sbin/
@@ -98,8 +103,9 @@ start/stop script: (S60pmtfxosd, S50pmtgpsd, S70pmtdiefaced)
 	==> /etc/init.d/
 generated pid: ( pmtfxosd.pid, pmtgpsd.pid, pmtdiefaced.pid) 
 	==> /run  (NO NEED TO INSTALL - FYI ONLY)
-WMM.COF (World Magnetic Model data) ==> /usr/share/pmtgeomagnet/WMM.COF
-FreeSans.ttf ==> /usr/share/fonts/truetype/freefont/FreeSans.ttf
+WMM.COF (World Magnetic Model data) ==> /usr/share/pmt/WMM.COF
+calibration data (generated via calib1.c, calib2.c) ==> /usr/share/pmt/calibdata
+FreeSans.ttf ==> /usr/share/fonts/truetype/freefont/FreeSans.ttf  (for SDL2 only)
 
 # INSTALLATION AND TESTING EXAMPLE for pmtfxosd
 ------------------------------------------------
@@ -119,7 +125,7 @@ FreeSans.ttf ==> /usr/share/fonts/truetype/freefont/FreeSans.ttf
 **************** Running/debugging Daemons ******************
 
 
-RUNNING FAKE DAEMONS (X86 OR ARM)
+RUNNING  DAEMONS (X86 OR ARM)
 ----------------------------------
 sudo service S50pmtgpsd start
 sudo service S60pmtfxosd start
@@ -156,9 +162,14 @@ ls /dev/shm/pmt* ==> get list of share-memory files and delete them
 ### Don't forget to remove from /etc/init.d/ /usr/sbin/ for daemon removal ######
 #  /etc/init.d/S50pmtgpsd, S60pmtfxosd, S70pmtdiefaced
 #  /usr/sbin/pmtgpsd, pmtfxosd, pmtdiefaced
-#  /usr/share/pmtgeomagnet/WMM.COF
+#  /usr/share/pmt/WMM.COF, calibdata
 #  /run/pmtgpsd.pid, pmtfxosd.pid,  pmtdiefaced.pid 
 
+
+*****************************************************************
+**************** Compiliation (Makefile) explained ******************
+We are using Linaro downloaded via Ubuntu, + libraries from Buildroot (because Ubuntu Linaro for some reason does not have -li2c + header files from Ubuntu Linaro. 
+NOTE that PATH is unchanged because we do NOT use Buildroot compiler (because it has a toolchain-wrapper and doesn't work for some reason)
 
 
 

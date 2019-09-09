@@ -1,0 +1,11 @@
+  See Nova Scotia Solution in Calibrate for explanation
+  int hardx;     /* hard iron calibration adjustment for x */ = step 6 ==>-400
+  int hardy;     /* hard iron calibration adjustment for y */ = step 6 ==> 846
+  int theta;     /* radians to rotate ellipse for soft iron adjustment */ ==> 0
+  int softx;     /* soft iron x adjustment to convert ellipse to circle */==> 1
+  int rperfect;  /* radius of the perfect circle for this device */ ==> 384
+  int sdtesla;   /* standard deviation for uTesla (device noise) */ = step 5 ==> 14
+  double sddegree;  /* standard deviation for degrees */ = REMOVE ME
+      sddegree == arctan( 14/384 ) = arctan(.03645) = 2.0875 degrees = .03643 radians
+
+  

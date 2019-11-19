@@ -158,7 +158,7 @@ ls /dev/shm/pmt* ==> get list of share-memory files and delete them
 
 *****************************************************************
 **************** Daemon Removal from Computer ******************
-
+calibration file ==> /usr/
 ### Don't forget to remove from /etc/init.d/ /usr/sbin/ for daemon removal ######
 #  /etc/init.d/S50pmtgpsd, S60pmtfxosd, S70pmtdiefaced
 #  /usr/sbin/pmtgpsd, pmtfxosd, pmtdiefaced
@@ -167,9 +167,23 @@ ls /dev/shm/pmt* ==> get list of share-memory files and delete them
 
 
 *****************************************************************
-**************** Compiliation (Makefile) explained ******************
-We are using Linaro downloaded via Ubuntu, + libraries from Buildroot (because Ubuntu Linaro for some reason does not have -li2c + header files from Ubuntu Linaro. 
-NOTE that PATH is unchanged because we do NOT use Buildroot compiler (because it has a toolchain-wrapper and doesn't work for some reason)
+*********** Magnetometer Calibration Explained ******************
+
+When a magnetometer (like the FXOS8700) is rotated 360 degrees on a flat surface, it should produce a set of (x,y) datapoints that form an exact circle centered on (0,0).   Due to electrical and magnetic interference by the surrounding electronics, uncalibrated magetometers,  when rotated 360 degrees produce an ellipse not centered on (0,0). This means all incoming data from the magnetometer must be adjusted (calibrated) so that it forms a circle centred on (0,0). That is calibration.
+
+There are 2 types of calibration: hard iron and soft iron.
+Hard iron calibration moves the ellipse created so it is centered on (0,0). For
+example, if the ellipse is centered on (122, 86), then hard iron calibration takes every magnetometer (x,y) reading and generates a (x-122, y-86) reading. The ellipse is then centered on (0,0).
+Soft iron calibration (often not required) converts the ellipse, centered on (0,0), to a circle. To do this, it rotates the ellipse so it is aligned on the y-axis, then scales the x coordinates to form
+a circle, and then rotates the point back so it is pointing in the correct direction.
+
+Note:  HikingGPS calibration is for a flat level 2d surface only. This is NOT a tilt compensated solution documented in many 3d ecompass solutions.  
+
+For magnetometer calibration, HikingGPS uses the file /usr/share/pmt/calibdata, defined in ~/include/pmtgps.h.   To generate this file, run ~/calibrate.  For no calibration, create /usr/share/pmt/calibdata with 1 record containing 0 0 0.0 1.0.  Use ~/calibtest to generate a "circle" of  magnetometer data, paste in a spreadsheet xy chart, and then play with the parameters in /usr/share/pmt/calibdata until you get a perfect circle.  FXOS8700 magnetic data is output as 999.9 uTesla(uT) = 9.999 Gauss.  The earth's magnetic field is 25-65 uTesla or .2-.6 Gauss.
+
+For more details on calibration, see website:
+https://www.sensorsmag.com/components/compensating-for-tilt-hard-iron-and-soft-iron-effects
+
 
 
 

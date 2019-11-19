@@ -3,28 +3,16 @@
  * readings Peter Thompson   -- May 2019
  *
  * Nova Scotia Solution.
- * fxos8700 magnetometer is noisy. Noise removed by 2 levels of statistics.
- * 1. degrees outside user-defined standard deviations are checked
- * 2. Outliers too far from perfect circle rejected.
- *
- * This is NOT a tilt compensated solution documented in most ecompass
- * solutions. FXOS8700 must be level and calibrated before calling this routine
- * uTesla readings are calibrated.  Outliers rejected based on distance
- * from perfect circle of device readings - 1or2or3 standard deviations.
- * uTesla(x,y) is converted to degrees.  If degrees are < degree_stddev of last
- * reading, old reading is returned and the new reading rejected as noise.
- *
+ * fxos8700 magnetometer is noisy. Noise is redeced via taking the average
+ * of the last several readings.
  * FXOS8700 magnetic data is output as 999.9 uTesla(uT) = 9.999 Gauss
  * Earth's magnetic field is 25-65 uTesla or .2-.6 Gauss
  * cross-compile with:
  * arm-linux-gnueabihf-gcc -o ecompassARM  ecompass.c  fxosdriver.c average.c -L
  * /home/peter/bbb2018/buildroot/output/target/usr/lib  -lm -li2c
- *
- *
- *
  */
 
-#include "pmtfxos.h" /* for SRAWDATA, CALIBMAGNET */
+#include "pmtfxos.h" /* for SRAWDATA, calibmagnet */
 #include <math.h>    /* for atan2(), sqrt() */
 #include <stdio.h>
 #include <stdlib.h>   /* for FILE ops */
@@ -57,7 +45,7 @@ void stackpushy(int);
 int stackavgx(void);
 int stackavgy(void);
 
-static CALIBMAGNET calib;
+static calibmagnet calib;
 
 /**
  * ecompass() - read fxos8700 magnetometer uTesla and convert to degrees
@@ -79,8 +67,7 @@ int ecompassinit(void) {
   }
   fgets(inbuf, 400, fp);
   sscanf(inbuf, "%d %d %d %lf %d %d %lf %lf", &calib.hardx, &calib.hardy,
-         &calib.theta, &calib.softx, &calib.rperfect, &calib.sdtesla,
-         &calib.sddegree, &calib.sdf);
+         &calib.softdeg, &calib.softx);
   return (SUCCESS);
 }
 
@@ -100,18 +87,15 @@ int ecompass(int fd) {
   /* hard iron calibration */
   tesla.x = pMagnData.x - calib.hardx;
   tesla.y = pMagnData.y - calib.hardy;
-  if (calib.theta != 0 || calib.softx != 1.0) {
+  if (calib.softdeg != 0 || calib.softx != 1.0) {
     /* soft iron calibration */
-    xrotate(calib.theta, tesla.x, tesla.y);  /* rotate x only */
-    tesla.x = tesla.x * calib.softx;         /* scale */
-    xrotate(-calib.theta, tesla.x, tesla.y); /* de-rotate x only */
+    tesla.x = xrotate(calib.softdeg, tesla.x,
+                      tesla.y);      /* rotate x to align ellipse on x-axis */
+    tesla.x = tesla.x * calib.softx; /* scale x-axis */
+    tesla.x = xrotate(-calib.softdeg, tesla.x,
+                      tesla.y); /* de-rotate x back to original position */
   }
 
-  /* remove off-circle outlier datapoints */
-  /*  vari = (int)(abs(sqrt(tesla.x * tesla.x + tesla.y * tesla.y)));
-    if (abs(vari - calib.rperfect) > calib.sdf * calib.sdtesla)
-      return (REJECT);
-  */
   /* noise reduction via averages */
   stackpushx(tesla.x);
   stackpushy(tesla.y);
@@ -166,11 +150,8 @@ void main(void) {
     exit(0);
   }
   printf("Calibration numbers - see Nova Scotia Solution for explanation\n");
-  printf(" hardx=%d\n hardy=%d\n theta=%d\n softx=%lf\n perfect radius =%d\n",
-         calib.hardx, calib.hardy, calib.theta, calib.softx, calib.rperfect);
-  printf(" std deviation-utesla=%d\n std deviation-degrees)=%lf\n",
-         calib.sdtesla, calib.sddegree);
-  printf(" standard deviation multiplier (user set) =%lf\n", calib.sdf);
+  printf(" hardx=%d\n hardy=%d\n softdeg=%d\n softx=%lf\n", calib.hardx,
+         calib.hardy, calib.softdeg, calib.softx);
 
   while (1) {
     rejects = cnt = 0;

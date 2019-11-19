@@ -6,6 +6,8 @@
  * a structure for gps data.
  * function prototypes.
  *
+ * FIXME eliminate pmtgps ddmmss and replace globally with linxdata dd
+ *
  *****************   gps.h  NMEA sentences   *********************
  *  structures for NMEA sentences
  * LINX-EVM-GPS-R4 streams via UART (RS232) the following 8 NMEA sentences:
@@ -16,6 +18,14 @@
  *   7 GPGGA - see below
  *   8 GPGLL - longitude, latitude - ignored
  */
+
+/**
+ * map simulations for initialization and testing
+ */
+#define NULL_ISLAND 0
+#define PERCY_LAKE 1
+#define PANORAMA 2
+#define SOLSONA 3
 
 /**
  * struct GPGGA --  NMEA sentence for current fix information

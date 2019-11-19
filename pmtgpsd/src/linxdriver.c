@@ -1,6 +1,11 @@
 /**
  * DOC:  -- linxdriver.c -- for linx R4 gps receiver device --
  *
+ * for unit testing,  cross-compile with
+arm-linux-gnueabihf-gcc -o testlinxdriver linxdriver.c peterpoint.c
+GeomagnetismLibrary.c  -I ../../include/ -L
+/home/peter/bbb2018/buildroot/output/target/usr/lib  -lm -lrt
+ *
  * Linx R4 gps device broadcasts NMEA sentences
  * on a UART (aka Serial Port)
  *   9600 baud,
@@ -10,11 +15,13 @@
  *   character buffering.
  */
 
+/*  #define MAINFORTESTING */
 #include "pmtgps.h"  /* for NMEA sentences and GPS structures */
 #include <errno.h>   /* for error messages via errno */
 #include <fcntl.h>   /* File control definitions */
 #include <math.h>    /* fabs() */
 #include <stdio.h>   /* Standard input/output definitions */
+#include <stdlib.h>  /* for exit() */
 #include <string.h>  /* String function definitions */
 #include <syslog.h>  /* for syslog */
 #include <termios.h> /* POSIX terminal control definitions */
@@ -36,8 +43,8 @@ double wmmdeclination(double, double, double, int, int, int);
 
 static char err[100];
 static struct linxdata gpslinx;
-int fser;    /* File descriptor for serial port */
-FILE *fpgps; /* File pointer for /var/log/pmtgpsd-rejects.log */
+static int fser; /* File descriptor for serial port */
+FILE *fpgps;     /* File pointer for /var/log/pmtgpsd-nmea.log */
 
 /**
  * linxinit() -- initialize UART, Null Island for linx R4 gps device --
@@ -69,35 +76,28 @@ int linxinit(void) {
   /* Set the new options for the port */
   tcsetattr(fser, TCSANOW, &options);
 
-  /* initiate gpslinx to Null Island */
-  gpslinx.date = 0;        /* 999999 = ddmmyy */
-  gpslinx.gmt = 0.0;       /* 999999.999 = UTC hh:mm:ss.sss */
-  gpslinx.longitude = 0.0; /*  + => East,  - => West */
-  gpslinx.latitude = 0.0;  /*  + => North, - => South */
-  gpslinx.altitude = 0.0;  /* 9999.9 = altitude meters */
-  gpslinx.declination =
-      0.0;             /* to West = negative (Toronto), to East = positive */
-  gpslinx.speed = 0.0; /* 999.99 = knots per hour */
-  gpslinx.track = 0.0; /* 999.99 = track angle in degrees True */
-
-  /* log file for rejected NMEA statements */
-  fpgps = fopen("/var/log/pmtgpsd-rejects.log", "w");
+  /* log file for NMEA statements */
+  fpgps = fopen("/var/log/pmtgpsd-nmea.log", "w");
   if (!fpgps) {
     sprintf(err, " %s\n", strerror(errno));
-    syslog(LOG_NOTICE, "Unable to open /var/log/pmtgpsd-rejects.log = %s", err);
+    syslog(LOG_NOTICE, "Unable to open /var/log/pmtgpsd-nmea.log = %s", err);
     return (FAILURE);
   }
+
+  /* initialize world magnetic model for declination calculation */
+  wmminit();
+
+  /* success */
   syslog(LOG_INFO, "Serial port /dev/ttyS1 successfully opened");
   return (SUCCESS);
 }
 
 /**
  * linxread() -- read data from linx R4 gps device --
- * Return: linxdata record or NULL if MAXCHAR read with no success
+ * Return: linxdata record or Null Island if MAXCHAR read with no success
  */
 struct linxdata *linxread(void) {
 
-  static struct linxdata gpslinxsave;
   struct GPGGA gpgga;
   struct GPRMC gprmc;
   /* Flags showing new gps records received TRUE=1,FALSE=0 */
@@ -108,6 +108,17 @@ struct linxdata *linxread(void) {
 
   i = 0;
   gpggaF = gprmcF = FALSE;
+
+  /* initiate gpslinx to Null Island */
+  gpslinx.date = 0;        /* 999999 = ddmmyy */
+  gpslinx.gmt = 0.0;       /* 999999.999 = UTC hh:mm:ss.sss */
+  gpslinx.longitude = 0.0; /*  + => East,  - => West */
+  gpslinx.latitude = 0.0;  /*  + => North, - => South */
+  gpslinx.altitude = 0.0;  /* 9999.9 = altitude meters */
+  gpslinx.declination =
+      0.0;             /* to West = negative (Toronto), to East = positive */
+  gpslinx.speed = 0.0; /* 999.99 = knots per hour */
+  gpslinx.track = 0.0; /* 999.99 = track angle in degrees True */
 
   /*
    *    Read characters until NMEA sentence found or MAXCHAR char read
@@ -122,8 +133,7 @@ struct linxdata *linxread(void) {
     if (num < 0) {
       sprintf(err, " %s\n", strerror(errno));
       syslog(LOG_NOTICE, " error reading serial port = %s", err);
-      /* probably nothing available yet -wait 0.5sec = 500,000 */
-      usleep(500000); /*FIXME Linx is slow, can sleep 1 sec? */
+      sleep(30); /*Linx chip slow to start - wait 30 sec */
       continue;
     }
     if (num == 0) {
@@ -132,10 +142,12 @@ struct linxdata *linxread(void) {
       continue;
     }
 
-    /* character found on serial port? */
+    /* character found on serial port */
     if (chout == '$') {
-      /* found NMEA sentence */
+      /* found NMEA sentence - print it to file*/
       buf[i] = '\0';
+      fprintf(fpgps, "%s", buf);
+      /* check if NMEA sentence is something we want */
       if (strncmp(buf, "$GPGGA", 6) == 0) {
         sscanf(buf + 7, "%f,%f,%c,%f,%c,%d,%d,%f,%f,%c,%f,%c", &gpgga.time,
                &gpgga.latitude, &gpgga.north, &gpgga.longitude, &gpgga.west,
@@ -152,7 +164,7 @@ struct linxdata *linxread(void) {
 
       /* if both NMEA records received, and both are valid... */
       if (gpggaF && gprmcF && gpgga.quality >= 1 && gpgga.quality <= 5 &&
-          gprmc.status == 'V') {
+          gprmc.status == 'A') {
         /* create a new gpslinx record */
         gpslinx.date = ddmmyytoyyyymmdd(gprmc.date);
         gpslinx.gmt = (int)gpgga.time;
@@ -165,35 +177,18 @@ struct linxdata *linxread(void) {
         gpslinx.altitude = gpgga.altitude;
         gpslinx.speed = gprmc.speed * 1.852; /* convert knots/hr to km/hr */
         gpslinx.track = gprmc.track;
-        if (fabs(gpslinx.longitude - gpslinxsave.longitude) +
-                fabs(gpslinx.latitude - gpslinxsave.latitude) >
-            MOTIONLESS * 100)
-          gpslinx.declination =
-              wmmdeclination(gpslinx.longitude, gpslinx.latitude,
-                             gpslinx.altitude / 1000.0, gpslinx.date / 10000,
-                             (gpslinx.date % 10000) / 100, gpslinx.date % 100);
-        /* copy, then return a new gpslinx record */
-        memcpy(&gpslinxsave, &gpslinx, sizeof(struct linxdata));
+        gpslinx.declination =
+            wmmdeclination(gpslinx.longitude, gpslinx.latitude,
+                           gpslinx.altitude / 1000.0, gpslinx.date / 10000,
+                           (gpslinx.date % 10000) / 100, gpslinx.date % 100);
+        /*return a new gpslinx record */
         return &gpslinx;
       }
       /*
        * ...a NMEA sentence found (chout = $), but it is
        * not the 2 sentences we want, so
-       * first log the rejected NMEA sentence, then
        * look for next NMEA by starting a new NMEA sentence
        */
-      if ((strncmp(buf, "$GPGGA", 6) != 0) && (strncmp(buf, "$GPRMC", 6) != 0))
-        fprintf(fpgps, "%s", buf); /* log unwanted NMEA sentence */
-
-      else if ((strncmp(buf, "$GPGGA", 6) == 0) &&
-               (gpgga.quality < 1 || gpgga.quality > 5)) {
-        fprintf(fpgps, "Next GPGGA rejected due to  poor quality");
-        fprintf(fpgps, "%s", buf); /* log rejected GPGGA sentence */
-      } else if ((strncmp(buf, "$GPRMC", 6) == 0) && (gprmc.status == 'V')) {
-        fprintf(fpgps, "Next GPRMC rejected due Void status");
-        fprintf(fpgps, "%s", buf); /* log rejected GPRMC sentence */
-      }
-      /* reset search for new NMEA */
       buf[0] = chout;
       i = 1;
       continue;
@@ -206,7 +201,7 @@ struct linxdata *linxread(void) {
     i++;
   }
   syslog(LOG_INFO, "GPGGA, GPRMC sentences not found in %d characters", j);
-  return NULL;
+  return &gpslinx;
 }
 
 /**
@@ -217,6 +212,7 @@ void linxclose(void) {
   syslog(LOG_INFO, "Exiting pmtgpsd  \n");
   close(fser);   /* Close the serial port */
   fclose(fpgps); /* Close the log file */
+  wmmclose();    /* close world magetic model */
   return;
 }
 
@@ -246,7 +242,33 @@ double dmtodd(double dm) {
   double dd;
 
   degrees = (int)(dm / 100.0);
-  minutes = dm - (double)degrees;
+  minutes = dm - (double)degrees * 100.0;
   dd = (double)degrees + minutes / 60.0;
   return dd;
 }
+
+#ifdef MAINFORTESTING
+int main() {
+  struct linxdata *linx; /* gps device Linx R4 data */
+  int s;
+  printf("init linx sensor\n");
+  s = linxinit();
+  printf(" linx init %d\n", s);
+  if (s == FAILURE)
+    exit(0);
+  printf(" start linx read\n");
+  while (1) {
+    linx = linxread();
+    printf("date/time %d %f long/lat %f %f altitude %f  declination %f "
+           "speed/track  %f %f\n",
+           linx->date, linx->gmt, linx->longitude, linx->latitude,
+           linx->altitude, linx->declination, linx->speed, linx->track);
+    printf("date/time %d %f long/lat %f %f altitude %f  declination %f "
+           "speed/track  %f %f\n",
+           gpslinx.date, gpslinx.gmt, gpslinx.longitude, gpslinx.latitude,
+           gpslinx.altitude, gpslinx.declination, gpslinx.speed, gpslinx.track);
+    sleep(5);
+  }
+}
+
+#endif

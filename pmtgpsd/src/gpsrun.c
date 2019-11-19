@@ -21,6 +21,7 @@
 #include <string.h>
 /* for mmap */
 #include <fcntl.h>
+#include <math.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -39,7 +40,7 @@
 int linxinit(void);
 struct linxdata *linxread(void);
 void linxclose(void);
-void simulate(struct PMTgps *);
+void simulate(struct PMTgps *, int);
 
 /**
  *DDtoDMS - convert decimal degree longitude/latitude to degree minute
@@ -56,18 +57,21 @@ struct dms *DDtoDMS(double dd, int longlat) {
   static struct dms ddmmss;
   double minutes;
 
-  ddmmss.degrees = (int)dd;
-  minutes = (dd - (double)ddmmss.degrees) * 60.0;
-  ddmmss.minutes = (int)minutes;
-  ddmmss.seconds = (int)((minutes - (double)ddmmss.minutes) * 60.0);
   if (dd < 0.0 && longlat == LONG)
-    ddmmss.nsew = 'E';
-  else if (dd >= 0.0 && longlat == LONG)
     ddmmss.nsew = 'W';
+  else if (dd >= 0.0 && longlat == LONG)
+    ddmmss.nsew = 'E';
   else if (dd < 0.0 && longlat == LAT)
     ddmmss.nsew = 'S';
   else if (dd >= 0.0 && longlat == LAT)
     ddmmss.nsew = 'N';
+
+  dd = fabs(dd);
+  ddmmss.degrees = (int)dd;
+  minutes = (dd - (double)ddmmss.degrees) * 60.0;
+  ddmmss.minutes = (int)minutes;
+  ddmmss.seconds = (int)((minutes - (double)ddmmss.minutes) * 60.0);
+
   return &ddmmss;
 }
 
@@ -115,6 +119,9 @@ void pmtgps(void) {
   ftruncate(fd, SIZE);
   gpsnow = mmap(0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
+  /* initialize shared-memory to NULL ISLAND, Linx chip is slow */
+  simulate(gpsnow, NULL_ISLAND);
+
   /* initialize Linx R4 device */
   if (linxinit())
     gpsworks = TRUE;
@@ -124,13 +131,9 @@ void pmtgps(void) {
   /**** START THE BIG LOOP ****/
   while (!stopd) {
     if (!gpsworks)
-      simulate(gpsnow);
+      simulate(gpsnow, PERCY_LAKE);
     else {
       linx = linxread(); /* gps device data */
-      if (linx == NULL) {
-        gpsworks = FALSE;
-        continue;
-      }
       /* reformat linx data to gpsnow data */
       ddmmss = DDtoDMS(linx->longitude, LONG);
       gpsnow->longitude =

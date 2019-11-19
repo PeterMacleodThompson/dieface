@@ -22,43 +22,64 @@
  */
 #include "pmtgps.h"
 
-#define PercyLake
-/* #define Panorama */
+void simulate(struct PMTgps *gpsnow, int sim) {
 
-#ifdef PercyLake
-void simulate(struct PMTgps *gpsnow) {
-  gpsnow->longitude = 782211; /* 78.36972 */
-  gpsnow->longitudeEW = 'W';
-  gpsnow->latitude = 451309; /* 45.21917 */
-  gpsnow->latitudeNS = 'N';
-  gpsnow->altitude = 1450; /* 1450 ft 440 meters */
-  gpsnow->declination = -11.567;
-  gpsnow->speed = 4;
-  gpsnow->track = 90;
-  gpsnow->date = 20181031;
-  gpsnow->gmt = 103005;
-  gpsnow->solartime = gpsnow->longitude / 150000 + gpsnow->gmt;
-  gpsnow->meridiantime = 0;
-  gpsnow->meridianlong = 0;
+  if (sim == NULL_ISLAND) {
+    gpsnow->longitude = 0; /* 0 */
+    gpsnow->longitudeEW = 'W';
+    gpsnow->latitude = 0; /* 0 */
+    gpsnow->latitudeNS = 'N';
+    gpsnow->altitude = 0; /* 0 meters */
+    gpsnow->declination = 0;
+    gpsnow->speed = 0;
+    gpsnow->track = 0;
+    gpsnow->date = 20000101;
+    gpsnow->gmt = 0;
+    gpsnow->solartime = gpsnow->longitude / 150000 + gpsnow->gmt;
+    gpsnow->meridiantime = 0;
+    gpsnow->meridianlong = 0;
+  } else if (sim == PERCY_LAKE) {
+    gpsnow->longitude = 782211; /* 78.36972 */
+    gpsnow->longitudeEW = 'W';
+    gpsnow->latitude = 451309; /* 45.21917 */
+    gpsnow->latitudeNS = 'N';
+    gpsnow->altitude = 1450; /* 1450 ft 440 meters */
+    gpsnow->declination = -11.567;
+    gpsnow->speed = 4;
+    gpsnow->track = 90;
+    gpsnow->date = 20181031;
+    gpsnow->gmt = 103005;
+    gpsnow->solartime = gpsnow->longitude / 150000 + gpsnow->gmt;
+    gpsnow->meridiantime = 0;
+    gpsnow->meridianlong = 0;
+  } else if (sim == PANORAMA) {
+    gpsnow->longitude = 1161426; /* 116.2406  */
+    gpsnow->longitudeEW = 'W';
+    gpsnow->latitude = 502734; /* 50.45944  */
+    gpsnow->latitudeNS = 'N';
+    gpsnow->altitude = 3773; /* 3773ft = 1150meters */
+    gpsnow->declination = 14.65;
+    gpsnow->speed = 2;
+    gpsnow->track = 270;
+    gpsnow->date = 20190115;
+    gpsnow->gmt = 112535;
+    gpsnow->solartime = gpsnow->longitude / 150000 + gpsnow->gmt;
+    gpsnow->meridiantime = 0;
+    gpsnow->meridianlong = 0;
+  } else if (sim == SOLSONA) {
+    gpsnow->longitude = 013056; /* 1.5155 */
+    gpsnow->longitudeEW = 'E';
+    gpsnow->latitude = 415936; /* 41.9933 */
+    gpsnow->latitudeNS = 'N';
+    gpsnow->altitude = 670; /* 670 meters */
+    gpsnow->declination = 1.06;
+    gpsnow->speed = 0;
+    gpsnow->track = 0;
+    gpsnow->date = 20181031;
+    gpsnow->gmt = 103005;
+    gpsnow->solartime = gpsnow->longitude / 150000 + gpsnow->gmt;
+    gpsnow->meridiantime = 0;
+    gpsnow->meridianlong = 0;
+  }
   return;
 }
-#endif
-
-#ifdef Panorama
-void simulate(struct linxdata *gpsnow) {
-  gpsnow->longitude = 1161426; /* 116.2406  */
-  gpsnow->longitudeEW = 'W';
-  gpsnow->latitude = 502734; /* 50.45944  */
-  gpsnow->latitudeNS = 'N';
-  gpsnow->altitude = 3773; /* 3773ft = 1150meters */
-  gpsnow->declination = 14.65;
-  gpsnow->speed = 2;
-  gpsnow->track = 270;
-  gpsnow->date = 20190115;
-  gpsnow->gmt = 112535;
-  gpsnow->solartime = gpsnow->longitude / 150000 + gpsnow->gmt;
-  gpsnow->meridiantime = 0;
-  gpsnow->meridianlong = 0;
-  return;
-}
-#endif

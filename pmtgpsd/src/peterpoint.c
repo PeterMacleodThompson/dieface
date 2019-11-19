@@ -79,7 +79,7 @@ static MAGtype_CoordGeodetic CoordGeodetic;
 static MAGtype_Date UserDate;
 static MAGtype_GeoMagneticElements GeoMagneticElements, Errors;
 static MAGtype_Geoid Geoid;
-static char filename[] = "/usr/share/pmtgeomagnet/WMM.COF";
+static char filename[] = "/usr/share/pmt/WMM.COF";
 //	static char filename[] = "WMM.COF";
 static char VersionDate_Large[] =
     "$Date: 2014-11-21 10:40:43 -0700 (Fri, 21 Nov 2014) $";
@@ -101,7 +101,7 @@ void wmminit(void) {
   if (!MAG_robustReadMagModels(filename, &MagneticModels, epochs)) {
     sprintf(
         err,
-        "/usr/share/pmtgeomagnet/WMM.COF not found.  declination = 0.0 \n ");
+        "/usr/share/pmt/WMM.COF not found.  declination = 0.0 \n ");
     syslog(LOG_NOTICE, "%s", err); /*to /var/log/syslog */
     wmmstop = 1;                   /* TRUE */
     return;

@@ -1,5 +1,5 @@
 ##################################
-# Peter Thompson March 2016
+# Peter Thompson March 2016  revised Nov 2019 for BBB-DEBOS
 # pmtgpsd makefile
 # based on helloworld makefile ~/Documents/maketemplate/makeDEVELOP/genericmake/
 # http://www.cs.colby.edu/maxwell/courses/tutorials/maketutor/
@@ -21,17 +21,17 @@
 SOURCES = pmtgpsdaemon.c peterpoint.c GeomagnetismLibrary.c gpsrun.c linxdriver.c simulate.c   # list of 6 source files
 
 
-EXECUTABLE = bin/pmtgpsd         # 2nd of 2 lines to change
+EXECUTABLE = /usr/sbin/pmtgpsd         # 2nd of 2 lines to change
 
 # hello directories
 SRCDIR = ./src
 OBJDIR = ./obj
 
 # compiler and linker flags to use 
-CC = arm-linux-gnueabihf-gcc
+CC = gcc
 
 CFLAGS += -I../include/ 
-LDFLAGS =  -L /home/peter/bbb2018/buildroot/output/target/usr/lib # -L  directory location of libraries
+LDFLAGS =  # -L  directory location of libraries
 LDLIBS += -lm -lrt # -lSDL -lm ... all libraries linked in
 STATIC = # -static # for static (not dynamic) link 
 

@@ -1,5 +1,5 @@
 ##################################
-# Peter Thompson March 2016
+# Peter Thompson March 2016  revised Nov 2019 for BBB-DEBOS
 # pmtfxosd makefile
 # based on helloworld makefile ~/Documents/maketemplate/makeDEVELOP/genericmake/
 # http://www.cs.colby.edu/maxwell/courses/tutorials/maketutor/
@@ -19,17 +19,17 @@
 
 # hello application ==> 2 lines to change
 SOURCES = pmtfxosdaemon.c fxos8700run.c fxosdriver.c ecompass.c getdieface.c average.c # list of 6 source files
-EXECUTABLE = bin/pmtfxosd         # 2nd of 2 lines to change
+EXECUTABLE = /usr/sbin/pmtfxosd         # 2nd of 2 lines to change
 
 # hello directories
 SRCDIR = ./src
 OBJDIR = ./obj
 
 # compiler and linker flags to use 
-CC = arm-linux-gnueabihf-gcc
+CC = gcc
 
 CFLAGS += -I../include/ 
-LDFLAGS =  -L /home/peter/bbb2018/buildroot/output/target/usr/lib # -L  directory location of libraries
+LDFLAGS =   # -L  directory location of libraries
 LDLIBS += -lm -lrt -li2c # -lSDL -lm ... all libraries linked in
 STATIC = # -static # for static (not dynamic) link 
 

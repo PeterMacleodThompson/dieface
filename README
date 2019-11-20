@@ -185,5 +185,50 @@ For more details on calibration, see website:
 https://www.sensorsmag.com/components/compensating-for-tilt-hard-iron-and-soft-iron-effects
 
 
+*****************************************************************
+*********** dieface installation on Beaglebone Black ******************
+
+On the Beaglebone Black DEBOS....
+/* download dieface daemons */
+cd /usr/local/src/
+git clone https://github.com/PeterMacleodThompson/dieface
+
+/* compile.. to correct binary directories */
+cd dieface/calibrate
+gcc  -o /usr/local/bin/calibrate  src/calibrate.c ../pmtfxosd/src/fxosdriver.c -I ../include/  -lm -li2c
+gcc  -o /usr/local/bin/calibtest  src/calibtest.c ../pmtfxosd/src/fxosdriver.c -I ../include/  -lm -li2c
+
+cd ../pmtfxosd
+make
+cp S60pmtfxosd /etc/init.d/
+chmod +x /etc/init.d/S60pmtfxosd
+
+cd ../pmtgpsd
+make
+cp S50pmtgpsd /etc/init.d/
+chmod +x /etc/init.d/S50pmtgpsd
+mkdir /usr/share/pmt/
+cp data/WMM.COF  /usr/share/pmt/
+
+cd ../pmtdiefaced
+make
+cp S70pmtdiefaced /etc/init.d/
+chmod +x /etc/init.d/S70pmtdiefaced
+
+cd ../test
+gcc -o testfxosdaemon  testfxosdaemon.c  -I../include  -lrt
+gcc -o testgpsdaemon  testgpsdaemon.c -I../include -lrt
+
+ - shut down Beaglebone Black. 
+ - install sensor-board
+ - restart Beaglebone Black
+ - /usr/local/bin/calibrate - follow instructions to calibrate
+ - /usr/local/bin/caslibtest - if necessary to finish calibration 
+test
+ - /usr/local/src/dieface/test/testfxosdaemon 
+ - /usr/local/src/dieface/test/testgpsdaemon 
+ - /usr/local/src/pmttest/...
+
+
 
 
